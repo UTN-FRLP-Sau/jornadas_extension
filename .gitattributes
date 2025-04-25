@@ -6,3 +6,5 @@
 *.css text eol=lf
 *.html text eol=lf
 img/video/Secuencia[[:space:]]01.mp4 filter=lfs diff=lfs merge=lfs -text
+jornadas2025/img/video/Secuencia 01.mp4 filter=lfs diff=lfs merge=lfs -text
+jornadas2025/img/video/Secuencia[[:space:]]01.mp4 filter=lfs diff=lfs merge=lfs -text
