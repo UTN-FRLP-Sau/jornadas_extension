@@ -529,3 +529,26 @@ h6,
     border-right: none;
 }
 
+.description {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 5; /* Número de líneas visibles */
+    -webkit-box-orient: vertical;
+    text-overflow: ellipsis;
+    max-height: auto; /* Ajusta según el número de líneas */
+    margin-bottom: 0;
+}
+
+.description.expanded {
+    -webkit-line-clamp: unset;
+    max-height: none;
+}
+
+.read-more-btn {
+    color: #007bff;
+    text-decoration: none;
+    cursor: pointer;
+    padding: 0;
+    border: none;
+    background: none;
+}

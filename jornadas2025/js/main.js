@@ -82,5 +82,10 @@
             }
         }
     });
-    
+    // Leer más funcionalidad
+    $('.read-more-btn').click(function () {
+        const description = $(this).prev('.description');
+        description.toggleClass('expanded');
+        $(this).text(description.hasClass('expanded') ? 'Leer menos' : 'Leer más');
+    });
 })(jQuery);
