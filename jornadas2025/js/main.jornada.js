@@ -16,12 +16,17 @@
     new WOW().init();
 
 
-    // Sticky Navbar
+    // Sticky Navbar + Change Logo on Scroll
+    const originalLogo = "../img/logos/Logo JFP 2025 invertido transparente.png";
+    const scrolledLogo = "../img/logos/JFP2025-LOGO-TRANSPARENTE.png";
+
     $(window).scroll(function () {
         if ($(this).scrollTop() > 45) {
             $('.navbar').addClass('sticky-top shadow-sm');
+            $('#navbar-logo').attr('src', scrolledLogo);
         } else {
             $('.navbar').removeClass('sticky-top shadow-sm');
+            $('#navbar-logo').attr('src', originalLogo);
         }
     });
 
