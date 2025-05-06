@@ -226,7 +226,15 @@ h6,
     }
 
     .navbar-light .navbar-brand img {
-        max-height: 45px;
+        max-height: 80px;
+    }
+
+    #navbar-logo {
+        width: 100px;
+    }
+
+    #titulo-row{
+        margin-right: 0px !important;
     }
 }
 
@@ -535,7 +543,7 @@ h6,
     -webkit-line-clamp: 5; /* Número de líneas visibles */
     -webkit-box-orient: vertical;
     text-overflow: ellipsis;
-    max-height: auto; /* Ajusta según el número de líneas */
+    max-height: auto;
     margin-bottom: 0;
 }
 
@@ -551,4 +559,43 @@ h6,
     padding: 0;
     border: none;
     background: none;
+}
+
+
+body {
+  overflow-x: visible;
+}
+
+
+.container-fluid {
+  overflow-x: visible;
+}
+
+
+.py-5.bg-primary-gradient {
+  padding-left: 15px;
+  padding-right: 15px;
+}
+
+.py-5.bg-primary-gradient .container-fluid {
+  margin: 0 !important;
+  padding: 2rem 15px !important;
+}
+
+/* Para el texto */
+.col-lg-4.text-lg-start.mx-4 {
+  margin-left: 1rem !important;
+  margin-right: 1rem !important;
+  width: calc(100% - 2rem); /* Asegura que no exceda el ancho */
+}
+
+#titulo {
+  margin-top: 60px !important;
+}
+
+#titulo-row{
+    margin-right: 50%;
+}
+#nav-bar {
+  margin-left: 20px !important;
 }
