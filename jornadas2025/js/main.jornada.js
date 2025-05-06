@@ -16,7 +16,7 @@
     new WOW().init();
 
 
-    const originalLogo = "../img/logos/Logo JFP 2025 invertido transparente.png";
+    const originalLogo = "../img/logos/Logo-JFP-2025-invertido-transparente.png";
     const scrolledLogo = "../img/logos/JFP2025-LOGO-TRANSPARENTE.png";
     
     function updateNavbarLogo() {

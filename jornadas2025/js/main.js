@@ -14,16 +14,37 @@
     
     // Initiate the wowjs
     new WOW().init();
-
-
-    // Sticky Navbar
-    $(window).scroll(function () {
-        if ($(this).scrollTop() > 300) {
-            $('.sticky-top').addClass('shadow-sm').css('top', '0px');
+    
+    const originalLogo = "../../img/logos/Logo-JFP-2025-invertido-transparente.png";
+    const scrolledLogo = "../../img/logos/JFP2025-LOGO-TRANSPARENTE.png";
+    
+    function updateNavbarLogo() {
+        const scrollTop = $(window).scrollTop();
+        const windowWidth = $(window).width();
+    
+        if (scrollTop > 45) {
+            $('.navbar').addClass('sticky-top');
+            $('.navbar-logo').attr('src', scrolledLogo);
         } else {
-            $('.sticky-top').removeClass('shadow-sm').css('top', '-100px');
+            $('.navbar').removeClass('sticky-top');
+            if (windowWidth < 992) {
+                $('.navbar-logo').attr('src', scrolledLogo);
+            } else {
+                $('.navbar-logo').attr('src', originalLogo);
+            }
         }
+    }
+    
+
+    $(document).ready(function () {
+        updateNavbarLogo();
     });
+
+    $(window).on('scroll resize', function () {
+        updateNavbarLogo();
+    });
+
+
     
     
     // Back to top button

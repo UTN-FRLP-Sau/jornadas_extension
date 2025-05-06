@@ -41,7 +41,9 @@ h6,
     font-weight: 500 !important;
 }
 
-
+.titulo-charla{
+    margin-top: 60px !important;
+}
 /*** Gradient Text & BG ***/
 .text-primary-gradient {
     background: linear-gradient(to bottom right, var(--primary), var(--secondary));
@@ -202,6 +204,10 @@ h6,
         border-top: 1px solid #DDDDDD;
     }
 
+    
+    .titulo-charla{
+        margin-top: 0px !important;
+    }
     .navbar-light .navbar-nav .nav-link,
     .sticky-top.navbar-light .navbar-nav .nav-link {
         padding: 10px 0;
