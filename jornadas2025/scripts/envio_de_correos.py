@@ -103,7 +103,8 @@ def recorrer_y_enviar():
                         apellido = fila.get('Apellido', 'desconocido')
                         legajo = fila.get('Legajo', 'desconocido')
                         dni = fila.get('DNI', 'desconocido')
-
+                        '''
+                        Tiene que ser facil procesar en formato tabla. Te recomiendo que lo hagas en formato CSV, y que uses los siguientes nombres de columna:
                         info_qr = (
                             f"Charla: {charla}\n"
                             f"Nombre: {nombre} {apellido}\n"
@@ -111,7 +112,8 @@ def recorrer_y_enviar():
                             f"DNI: {dni}\n"
                             f"Correo: {email}"
                         )
-
+                        '''
+                        info_qr = {charla}";"{nombre}";"{apellido}";"{legajo}";"{dni}")
                         qr_path = generar_qr(info_qr)
 
                         logging.info(f"Preparando correo para: {email} - {nombre}")
