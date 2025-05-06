@@ -536,6 +536,20 @@ h6,
     border-right: none;
 }
 
+.description-magistral{
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 6; /* Número de líneas visibles */
+    -webkit-box-orient: vertical;
+    text-overflow: ellipsis;
+    max-height: auto;
+    margin-bottom: 0;
+}
+.description-magistral.expanded {
+    -webkit-line-clamp: unset;
+    max-height: none;
+}
+
 .description {
     overflow: hidden;
     display: -webkit-box;

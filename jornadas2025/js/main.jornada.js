@@ -118,6 +118,11 @@
             }
         }
     });
-    
+    // Leer más funcionalidad
+    $('.read-more-btn').click(function () {
+        const description = $(this).prev('.description-magistral');
+        description.toggleClass('expanded');
+        $(this).text(description.hasClass('expanded') ? 'Leer menos' : 'Leer más');
+    });
 })(jQuery);
 
