@@ -59,7 +59,7 @@ def generar_qr(info):
     img.save(qr_path)
     return qr_path
 
-def enviar_correo(destinatario, nombre, qr_path, charla):
+def enviar_correo(destinatario, nombre, qr_path, charla, smtp):
     try:
         msg = MIMEMultipart()
         msg['Subject'] = f"Confirmación de asistencia a la charla: {charla}"
@@ -76,16 +76,18 @@ def enviar_correo(destinatario, nombre, qr_path, charla):
             img.add_header('Content-Disposition', 'attachment', filename='codigo_qr.png')
             msg.attach(img)
 
-        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as smtp:
-            smtp.starttls()
-            smtp.login(EMAIL_SENDER, EMAIL_PASSWORD)
-            smtp.send_message(msg)
-            logging.info(f"Correo enviado a {destinatario}")
+        smtp.send_message(msg)
+        logging.info(f"Correo enviado a {destinatario}")
     except Exception as e:
         logging.error(f"Error al enviar correo a {destinatario}: {e}")
 
+
 def recorrer_y_enviar():
     logging.info(f"Buscando archivos en: {BASE_DIR}")
+    k = 0
+    k_max = 1
+    smtp = None
+
     for root, dirs, files in os.walk(BASE_DIR):
         logging.info(f"Revisando carpeta: {root}")
         for file in files:
@@ -104,25 +106,43 @@ def recorrer_y_enviar():
                         legajo = fila.get('Legajo', 'desconocido')
                         dni = fila.get('DNI', 'desconocido')
 
-                        info_qr = (
-                            f"Charla: {charla}\n"
-                            f"Nombre: {nombre} {apellido}\n"
-                            f"Legajo: {legajo}\n"
-                            f"DNI: {dni}\n"
-                            f"Correo: {email}"
-                        )
-
-                        qr_path = generar_qr(info_qr)
-
-                        logging.info(f"Preparando correo para: {email} - {nombre}")
                         if pd.notnull(email):
-                            enviar_correo(email, nombre, qr_path, charla)
-                            time.sleep(1)
+                            info_qr = (
+                                f"Charla: {charla}\n"
+                                f"Nombre: {nombre} {apellido}\n"
+                                f"Legajo: {legajo}\n"
+                                f"DNI: {dni}\n"
+                                f"Correo: {email}"
+                            )
+                            qr_path = generar_qr(info_qr)
 
-                        os.remove(qr_path)
+                            # Abre conexión SMTP si no esta abierta
+                            if smtp is None:
+                                logging.info("Abriendo conexión SMTP...")
+                                smtp = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+                                smtp.starttls()
+                                smtp.login(EMAIL_SENDER, EMAIL_PASSWORD)
+
+                            # Envia el correo
+                            enviar_correo(email, nombre, qr_path, charla, smtp)
+
+                            os.remove(qr_path)
+                            k += 1
+
+                            # Cerrar conexion cada k_max correos
+                            if k == k_max:
+                                logging.info("Cerrando conexión SMTP (límite alcanzado)...")
+                                smtp.quit()
+                                smtp = None
+                                k = 0
 
                 except Exception as e:
                     logging.error(f"Error al procesar {path_csv}: {e}")
+
+    # Cerrar si quedo abierta
+    if smtp:
+        logging.info("Cerrando conexión SMTP (al finalizar)")
+        smtp.quit()
 
 if __name__ == '__main__':
     recorrer_y_enviar()
