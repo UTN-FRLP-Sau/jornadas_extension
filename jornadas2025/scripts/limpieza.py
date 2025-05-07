@@ -62,6 +62,12 @@ def validar_y_limpiar_csv(path_csv):
     df_errors = pd.DataFrame(error_rows)
     return df_clean, df_errors
 
+def agrupar_por_dominio(df):
+    """Agrupa los correos por dominio y devuelve un DataFrame con el conteo."""
+    df['Dominio'] = df['Mail'].apply(lambda x: x.split('@')[1] if isinstance(x, str) else x)
+    agrupado = df.groupby('Dominio').agg({'Mail': 'count'}).rename(columns={'Mail': 'Conteo'}).reset_index()
+    return agrupado
+
 def procesar_csv(departamento, archivo_csv):
     """Procesa un archivo CSV de una charla en un departamento."""
     # Obtener el nombre de la charla
@@ -86,11 +92,17 @@ def procesar_csv(departamento, archivo_csv):
     df_clean.to_csv(archivo_limpio, index=False)
 
     # Guardar los registros con errores, si existen
+    archivo_errores = None
     if not df_errors.empty:
         archivo_errores = os.path.join(salida_dir, f'errores_{base}.csv')
         df_errors.to_csv(archivo_errores, index=False)
 
-    return archivo_limpio, archivo_errores if not df_errors.empty else None
+    # Agrupar mails por dominio y guardar
+    agrupacion = agrupar_por_dominio(df_clean)
+    archivo_dominios = os.path.join(salida_dir, f'dominios_{base}.csv')
+    agrupacion.to_csv(archivo_dominios, index=False)
+
+    return archivo_limpio, archivo_errores, archivo_dominios
 
 def procesar_departamentos(directorio_base):
     """Procesa todos los archivos CSV en el directorio base."""
@@ -99,10 +111,11 @@ def procesar_departamentos(directorio_base):
         if os.path.isdir(departamento_path):
             for archivo_csv in os.listdir(departamento_path):
                 if archivo_csv.endswith('.csv'):
-                    archivo_limpio, archivo_errores = procesar_csv(departamento_path, archivo_csv)
-                    print(f"Archivo limpio guardado en: {archivo_limpio}")
+                    archivo_limpio, archivo_errores, archivo_dominios = procesar_csv(departamento_path, archivo_csv)
+                    print(f"✅ Archivo limpio guardado en: {archivo_limpio}")
                     if archivo_errores:
-                        print(f"  ⚠ Errores: {archivo_errores}")
+                        print(f"⚠️  Errores guardados en: {archivo_errores}")
+                    print(f"📊 Agrupación de dominios guardada en: {archivo_dominios}")
 
 if __name__ == '__main__':
     # Directorio base donde se encuentran las carpetas 'inscripciones' y 'inscripciones-limpias'
