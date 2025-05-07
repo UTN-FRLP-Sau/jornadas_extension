@@ -12,10 +12,10 @@ def generar_certificado_con_qr(info, nombre_charla):
     """
     try:
         # Carga la plantilla base
-        template_path = os.path.join(os.path.dirname(__file__), 'template.png')
+        template_path = os.path.join(os.path.dirname(__file__), 'template.jpg')
         certificado = Image.open(template_path).convert("RGB")
     except FileNotFoundError:
-        raise FileNotFoundError("No se encontró el archivo template.png en el directorio")
+        raise FileNotFoundError("No se encontró el archivo template.jpg en el directorio")
     
     # Genera el QR
     qr = qrcode.QRCode(
@@ -33,34 +33,37 @@ def generar_certificado_con_qr(info, nombre_charla):
         img_qr = img_qr.get_image()
     
     # Redimensiona el QR
-    qr_size = (600, 600)
+    qr_size = (700, 700)
     img_qr = img_qr.resize(qr_size, Image.Resampling.LANCZOS)
     
     # Posicion del QR
-    qr_position = (250, 750)
+    qr_position = (100, 700)
     certificado.paste(img_qr, qr_position)
     
     # titulo
-    texto = f"Certificado de inscripción a la charla:\n{nombre_charla}"
+    texto = f"QR de asistencia a:\n\n\n{nombre_charla}"
 
 
     # configuracion de texto
     draw = ImageDraw.Draw(certificado)
     text_config = {
-        'position': (300, 200),  # (x, y)
+        'position': (200, 150),  # (x, y)
         'box_size': (500, 500),   # (width, height)
-        'font_size': 80,
-        'color': 'black'
+        'font_size': 60,
+        'color': (44, 78, 254)  # Azul personalizado
     }
 
-    # Intenta cargar fuente personalizada o usar default
+   # Ruta absoluta a la fuente, partiendo desde el archivo actual (tu_script.py)
+    fuente_path = os.path.join(os.path.dirname(__file__), '..', 'fonts', 'Planc-wfx', 'Planc-Bold.otf')
+
     try:
-        font = ImageFont.truetype("arial.ttf", text_config['font_size'])
-    except:
+        font = ImageFont.truetype(fuente_path, text_config['font_size'])
+    except Exception as e:
+        print(f"No se pudo cargar la fuente personalizada: {e}")
         font = ImageFont.load_default()
 
     # Ajusta texto al tamaño de caja
-    lines = textwrap.wrap(texto, width=20)
+    lines = texto.split('\n')
     
     # Calcular posicion vertical inicial
     x, y = text_config['position']
