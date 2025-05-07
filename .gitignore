@@ -1,2 +1,5 @@
 **/venv/
 **/.env
+**/inscripciones
+**/logs
+**/__pycache__
