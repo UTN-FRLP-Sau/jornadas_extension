@@ -18,23 +18,12 @@ EMAIL_SENDER = os.getenv('EMAIL_SENDER')
 EMAIL_PASSWORD = os.getenv('EMAIL_PASSWORD')
 EMAIL_ALIAS = os.getenv('EMAIL_SENDER')
 
-HTML_TEMPLATE = """\
-<html>
-<head></head>
-<body>
-    <p>Hola {{nombre}},</p>
-    
-    <p>Gracias por inscribirte en la charla <strong>{{charla}}</strong>.</p>
-    
-    <p>Adjunto encontrarás tu certificado de inscripción con el código QR:</p>
-    
-    <p>Por favor, presenta este código QR al ingresar al evento.</p>
-    
-    <p>Saludos,<br>
-    Equipo Organizador</p>
-</body>
-</html>
-"""
+# Ruta al template
+template_path = os.path.join(os.path.dirname(__file__), 'template.html')
+
+# Leer el contenido del archivo HTML una sola vez
+with open(template_path, 'r', encoding='utf-8') as f:
+    HTML_TEMPLATE = f.read()
 
 # Configuracion de logging
 log_dir = os.path.join(os.path.dirname(__file__), 'logs')
@@ -58,7 +47,7 @@ def limpiar_nombre_charla(nombre_archivo):
 def enviar_correo(destinatario, nombre, certificado_path, charla, smtp):
     try:
         msg = MIMEMultipart()
-        msg['Subject'] = f"Confirmación de asistencia a la charla: {charla}"
+        msg['Subject'] = f"QR de asistencia para la charla: {charla} - Jornadas de Formación Profesional 2025"
         msg['From'] = EMAIL_ALIAS
         msg['To'] = destinatario
         msg['Reply-To'] = EMAIL_SENDER
@@ -72,7 +61,8 @@ def enviar_correo(destinatario, nombre, certificado_path, charla, smtp):
         # Adjunta el certificado con QR
         with open(certificado_path, 'rb') as f:
             img = MIMEImage(f.read())
-            img.add_header('Content-Disposition', 'attachment', filename='certificado_inscripcion.png')
+            img.add_header('Content-ID', '<certificado>')
+            img.add_header('Content-Disposition', 'inline', filename='certificado_inscripcion.png')
             msg.attach(img)
 
         smtp.send_message(msg)
@@ -113,7 +103,7 @@ def recorrer_y_enviar():
                         info_qr = f"{charla};{legajo};{dni};"
                         
                         # Genera certificado con QR
-                        certificado_path = generar_certificado_con_qr(info_qr)
+                        certificado_path = generar_certificado_con_qr(info_qr,charla)
                         
                         # Maneja conexión SMTP
                         if smtp is None:
@@ -132,7 +122,6 @@ def recorrer_y_enviar():
                                 smtp.quit()
                                 smtp = None
                                 k = 0
-                                time.sleep(2)
                         else:
                             if smtp:
                                 try:
@@ -141,7 +130,6 @@ def recorrer_y_enviar():
                                     pass
                                 smtp = None
                                 k = 0
-                                time.sleep(5)
                 
                 except Exception as e:
                     logging.error(f"Error procesando {path_csv}: {e}")

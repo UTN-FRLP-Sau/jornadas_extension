@@ -3,7 +3,7 @@ import qrcode
 from PIL import Image, ImageDraw, ImageFont
 import textwrap
 
-def generar_certificado_con_qr(info):
+def generar_certificado_con_qr(info, nombre_charla):
     """
     Genera un certificado con QR y texto personalizado.
     
@@ -41,7 +41,8 @@ def generar_certificado_con_qr(info):
     certificado.paste(img_qr, qr_position)
     
     # titulo
-    texto = "Este es tu QR de asistencia!"
+    texto = f"Certificado de inscripción a la charla:\n{nombre_charla}"
+
 
     # configuracion de texto
     draw = ImageDraw.Draw(certificado)
@@ -89,5 +90,5 @@ if __name__ == '__main__':
     info_ejemplo = "c01;311;4423"
     
     # Generar certificado con QR
-    path = generar_certificado_con_qr(info_ejemplo)
+    path = generar_certificado_con_qr(info_ejemplo,nombre_charla="Charla de Ejemplo")
     print(f"Certificado generado en: {path}")
