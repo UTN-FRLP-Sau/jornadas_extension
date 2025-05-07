@@ -105,38 +105,30 @@ def recorrer_y_enviar():
                         apellido = fila.get('Apellido', 'desconocido')
                         legajo = fila.get('Legajo', 'desconocido')
                         dni = fila.get('DNI', 'desconocido')
-                        '''
-                        Tiene que ser facil procesar en formato tabla. Te recomiendo que lo hagas en formato CSV, y que uses los siguientes nombres de columna:
-                        info_qr = (
-                            f"Charla: {charla}\n"
-                            f"Nombre: {nombre} {apellido}\n"
-                            f"Legajo: {legajo}\n"
-                            f"DNI: {dni}\n"
-                            f"Correo: {email}"
-                        )
-                        '''
-                        info_qr = {charla}";"{nombre}";"{apellido}";"{legajo}";"{dni}")
+
+                        info_qr = f"{charla};{nombre};{apellido};{legajo};{dni};{email}"
+
                         qr_path = generar_qr(info_qr)
 
-                            # Abre conexión SMTP si no esta abierta
-                            if smtp is None:
-                                logging.info("Abriendo conexión SMTP...")
-                                smtp = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
-                                smtp.starttls()
-                                smtp.login(EMAIL_SENDER, EMAIL_PASSWORD)
+                        # Abre conexión SMTP si no esta abierta
+                        if smtp is None:
+                            logging.info("Abriendo conexión SMTP...")
+                            smtp = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+                            smtp.starttls()
+                            smtp.login(EMAIL_SENDER, EMAIL_PASSWORD)
 
-                            # Envia el correo
-                            enviar_correo(email, nombre, qr_path, charla, smtp)
+                        # Envia el correo
+                        enviar_correo(email, nombre, qr_path, charla, smtp)
 
-                            os.remove(qr_path)
-                            k += 1
+                        os.remove(qr_path)
+                        k += 1
 
-                            # Cerrar conexion cada k_max correos
-                            if k == k_max:
-                                logging.info("Cerrando conexión SMTP (límite alcanzado)...")
-                                smtp.quit()
-                                smtp = None
-                                k = 0
+                        # Cerrar conexion cada k_max correos
+                        if k == k_max:
+                            logging.info("Cerrando conexión SMTP (límite alcanzado)...")
+                            smtp.quit()
+                            smtp = None
+                            k = 0
 
                 except Exception as e:
                     logging.error(f"Error al procesar {path_csv}: {e}")
