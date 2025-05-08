@@ -27,21 +27,26 @@ def transformar_codigo_charla_a_nombre_charla(codigo_charla):
 
 def ajustar_texto(texto, fuente_path, box_width, box_height, font_size):
     """
-    Ajusta el texto para que entre en un recuadro, aumentando el tamaño de fuente hasta que encaje.
-    Si una palabra no cabe en la línea, se mueve automáticamente a la siguiente línea.
+    Ajusta el texto para que entre en un recuadro con tamaño de fuente fijo.
+    Si el texto no cabe, ajusta el ancho de línea manteniendo el tamaño de fuente.
     """
-    font = ImageFont.truetype(fuente_path, font_size)
-    lines = textwrap.wrap(texto, width=40)  # Ajuste inicial con tamaño de fuente
+    try:
+        font = ImageFont.truetype(fuente_path, font_size)
+    except:
+        font = ImageFont.load_default()
+    
+    # Ajusta el ancho de línea para que el texto quepa
+    wrap_width = 30  # Valor inicial
+    lines = textwrap.wrap(texto, width=wrap_width)
+    
+    # Calcula dimensiones del texto
     total_height = sum([font.getbbox(line)[3] - font.getbbox(line)[1] + 10 for line in lines])
     max_line_width = max([font.getbbox(line)[2] - font.getbbox(line)[0] for line in lines])
     
-    # Si el texto no cabe, reducimos el tamaño de la fuente
-    while total_height > box_height or max_line_width > box_width:
-        font_size -= 2  # Reducimos el tamaño de la fuente
-        if font_size < 10:  # Para evitar que el tamaño de la fuente sea demasiado pequeño
-            break
-        font = ImageFont.truetype(fuente_path, font_size)
-        lines = textwrap.wrap(texto, width=40)
+    # Ajusta el ancho de línea si es necesario
+    while (total_height > box_height or max_line_width > box_width) and wrap_width > 10:
+        wrap_width -= 1
+        lines = textwrap.wrap(texto, width=wrap_width)
         total_height = sum([font.getbbox(line)[3] - font.getbbox(line)[1] + 10 for line in lines])
         max_line_width = max([font.getbbox(line)[2] - font.getbbox(line)[0] for line in lines])
 
@@ -49,7 +54,7 @@ def ajustar_texto(texto, fuente_path, box_width, box_height, font_size):
 
 def generar_qr_asistencia(info, codigo_charla):
     """
-    Genera un certificado con QR y texto personalizado.
+    Genera un certificado con QR y texto personalizado con tamaño de fuente fijo.
     """
     try:
         template_path = os.path.join(os.path.dirname(__file__), 'template.jpg')
@@ -57,6 +62,7 @@ def generar_qr_asistencia(info, codigo_charla):
     except FileNotFoundError:
         raise FileNotFoundError("No se encontró el archivo template.jpg en el directorio")
 
+    # Generar QR
     qr = qrcode.QRCode(
         version=1,
         error_correction=qrcode.constants.ERROR_CORRECT_L,
@@ -74,6 +80,7 @@ def generar_qr_asistencia(info, codigo_charla):
     qr_position = (100, 700)
     certificado.paste(img_qr, qr_position)
 
+    # Obtengo nombre de la charla
     nombre_charla = transformar_codigo_charla_a_nombre_charla(codigo_charla)
     texto_final = f"QR de asistencia a:\n{nombre_charla}"
 
@@ -81,51 +88,50 @@ def generar_qr_asistencia(info, codigo_charla):
     text_config = {
         'position': (90, 300),
         'box_size': (720, 420),
-        'font_size': 90,
+        'font_size': 55,
         'color': (44, 78, 254)
     }
 
+    # Configura fuente
     fuente_path = os.path.join(os.path.dirname(__file__), '..', 'fonts', 'Planc-wfx', 'Planc-Bold.otf')
-    try:
-        _ = ImageFont.truetype(fuente_path, text_config['font_size'])
-    except Exception as e:
-        print(f"No se pudo cargar la fuente personalizada: {e}")
-        fuente_path = None
-
-    # Si la fuente se carga correctamente, ajusta el texto con la fuente personalizada
-    if fuente_path:
-        lines, font_ajustada = ajustar_texto(texto_final, fuente_path, text_config['box_size'][0], text_config['box_size'][1], text_config['font_size'])
-    else:
-        font_ajustada = ImageFont.load_default()
-        lines = textwrap.wrap(texto_final, width=40)
+    
+    # Ajusta texto con tamaño de fuente fijo
+    lines, font = ajustar_texto(
+        texto_final, 
+        fuente_path, 
+        text_config['box_size'][0], 
+        text_config['box_size'][1],
+        text_config['font_size']
+    )
 
     x, y = text_config['position']
     box_width, box_height = text_config['box_size']
-    total_height = sum([font_ajustada.getbbox(line)[3] - font_ajustada.getbbox(line)[1] + 10 for line in lines])
-    y_start = y
-
-    # Visualizar el box de texto con un borde (para debug)
+    
+    # Dibuja recuadro rojo (solo para DEBUG)
     draw.rectangle(
         [text_config['position'], 
         (text_config['position'][0] + text_config['box_size'][0],
-        text_config['position'][1] + text_config['box_size'][1])],
+         text_config['position'][1] + text_config['box_size'][1])],
         outline="red",
         width=3
     )
 
+    # Posicionamiento del texto
+    y_start = y
     for line in lines:
-        bbox = font_ajustada.getbbox(line)
+        bbox = font.getbbox(line)
         text_width = bbox[2] - bbox[0]
         text_height = bbox[3] - bbox[1]
         x_position = x + (box_width - text_width) // 2
-        draw.text((x_position, y_start), line, font=font_ajustada, fill=text_config['color'])
+        draw.text((x_position, y_start), line, font=font, fill=text_config['color'])
         y_start += text_height + 10
 
+    # Guarda el resultado
     output_path = os.path.join(os.path.dirname(__file__), 'certificado_generado.png')
     certificado.save(output_path)
     return output_path
 
 if __name__ == '__main__':
     info_ejemplo = "c01;311;4423"
-    path = generar_qr_asistencia(info_ejemplo, codigo_charla="ma-01")
+    path = generar_qr_asistencia(info_ejemplo, codigo_charla="ma-09")
     print(f"Certificado generado en: {path}")
