@@ -11,6 +11,9 @@ from generar_qr_asistencia import generar_qr_asistencia
 
 load_dotenv()
 
+REINTENTAR_TODOS = False  # Cambiar a True para reenviar a todos, incluso a los exitosos // util para reenvio sin sin tener que eliminar el logs
+
+
 SMTP_SERVER = 'smtp.office365.com'
 SMTP_PORT = 587
 EMAIL_SENDER = os.getenv('EMAIL_SENDER')
@@ -158,8 +161,9 @@ def recorrer_y_enviar():
                         logging.warning(f"Fila sin email: {fila}")
                         continue
 
-                    # verifica si es el primer envio, si el email está en fallidos o si es un nuevo mail
-                    if (primer_envio or 
+                    # verifica si es el primer envio, si el email está en fallidos o si es un nuevo mail, si reintaar todos es true reenviara a todos
+                    if (REINTENTAR_TODOS or
+                        primer_envio or 
                         email in emails_fallidos or 
                         (email not in emails_exitosos and email not in emails_fallidos)):
                         
