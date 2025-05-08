@@ -143,7 +143,7 @@ def recorrer_y_enviar():
             path_csv = os.path.join(charla_path, archivo_csv)
 
             if not os.path.exists(path_csv):
-                logging.warning(f"No se encontró el archivo CSV esperado: {path_csv}")
+                logging.warning(f"No se encontro el archivo CSV esperado: {path_csv}")
                 continue
 
             logging.info(f"Procesando: {path_csv} (charla: {charla})")
@@ -174,7 +174,7 @@ def recorrer_y_enviar():
                         
                         # Maneja conexión SMTP
                         if smtp is None:
-                            logging.info("Estableciendo conexión SMTP...")
+                            logging.info("Estableciendo conexion SMTP...")
                             smtp = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
                             smtp.starttls()
                             smtp.login(EMAIL_SENDER, EMAIL_PASSWORD)
@@ -185,7 +185,7 @@ def recorrer_y_enviar():
                             os.remove(certificado_path)
 
                             if k >= k_max:
-                                logging.info(f"Reiniciando conexión después de {k_max} correos")
+                                logging.info(f"Reiniciando conexion después de {k_max} correos")
                                 smtp.quit()
                                 smtp = None
                                 k = 0
@@ -201,7 +201,7 @@ def recorrer_y_enviar():
                     k = 0
 
     if smtp:
-        logging.info("Cerrando conexión SMTP final")
+        logging.info("Cerrando conexion SMTP final")
         try:
             smtp.quit()
         except:
