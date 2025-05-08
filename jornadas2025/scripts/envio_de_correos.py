@@ -7,7 +7,7 @@ from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 from dotenv import load_dotenv
 from jinja2 import Template
-from generar_certificado_asistencia import generar_certificado_con_qr
+from generar_qr_asistencia import generar_qr_asistencia
 
 load_dotenv()
 
@@ -20,7 +20,7 @@ EMAIL_ALIAS = os.getenv('EMAIL_SENDER')
 # Ruta al template
 template_path = os.path.join(os.path.dirname(__file__), 'template.html')
 
-# Leer el contenido del archivo HTML una sola vez
+# Lee el contenido del archivo HTML una sola vez
 with open(template_path, 'r', encoding='utf-8') as f:
     HTML_TEMPLATE = f.read()
 
@@ -29,8 +29,10 @@ log_dir = os.path.join(os.path.dirname(__file__), 'logs')
 if not os.path.exists(log_dir):
     os.makedirs(log_dir)
 
+log_file_path = os.path.join(log_dir, 'enviar_correos.log')
+
 logging.basicConfig(
-    filename=os.path.join(log_dir, 'enviar_correos.log'),
+    filename=log_file_path,
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
 )
@@ -39,17 +41,50 @@ logging.basicConfig(
 BASE_DIR = os.path.join(os.path.dirname(__file__), '..', 'inscripciones')
 BASE_DIR = os.path.abspath(BASE_DIR)
 
-def limpiar_nombre_charla(nombre_archivo):
+def obtener_emails_fallidos_desde_log(log_path):
     """
-    Extrae el nombre legible de la charla a partir del archivo 'limpio_xxx.csv'
+    Obtiene la lista de emails a los que no se pudo enviar el correo desde el archivo de log.
+    También obtiene los emails que ya fueron enviados correctamente.
+
+    Args:
+        log_path (str): Ruta al archivo de log.
+
+    Returns:
+        tuple: (set de emails fallidos, set de emails exitosos)
     """
-    nombre = os.path.splitext(nombre_archivo)[0]  # sin extensión
-    if nombre.startswith("limpio_"):
-        nombre = nombre[len("limpio_"):]  # quitar prefijo
-    nombre = nombre.replace('_', ' ').strip().title()
-    return nombre
+    emails_fallidos = set()
+    emails_exitosos = set()
+    
+    if os.path.exists(log_path):
+        with open(log_path, 'r', encoding='utf-8') as log_file:
+            for linea in log_file:
+                if 'Error al enviar correo a' in linea:
+                    partes = linea.split('Error al enviar correo a')[1].split('para la charla')
+                    if len(partes) >= 1:
+                        email = partes[0].strip()
+                        emails_fallidos.add(email)
+                elif 'Correo enviado a' in linea:
+                    partes = linea.split('Correo enviado a')[1].split('para la charla')
+                    if len(partes) >= 1:
+                        email = partes[0].strip()
+                        emails_exitosos.add(email)
+    
+    return emails_fallidos, emails_exitosos
 
 def enviar_correo(destinatario, nombre, certificado_path, charla, smtp):
+    """
+    Envía un correo electrónico con el certificado de asistencia.
+
+    Args:
+        destinatario (str): Dirección de correo electrónico del destinatario.
+        nombre (str): Nombre del participante.
+        certificado_path (str): Ruta al archivo del certificado.
+        charla (str): Nombre de la charla.
+        smtp (smtplib.SMTP): Conexión SMTP.
+
+    Returns:
+        bool: True si el correo se envió correctamente, False en caso contrario.
+    """
     try:
         msg = MIMEMultipart()
         msg['Subject'] = f"QR de asistencia para la charla: {charla} - Jornadas de Formación Profesional 2025"
@@ -83,21 +118,34 @@ def recorrer_y_enviar():
     k_max = 10
     smtp = None
 
+    # Obtiene emails fallidos y exitosos del log
+    emails_fallidos, emails_exitosos = obtener_emails_fallidos_desde_log(log_file_path)
+    
+    # Determina si es el primer envio (cuando no hay logs o esta vacio)
+    primer_envio = not os.path.exists(log_file_path) or os.path.getsize(log_file_path) == 0
+        
     for departamento in os.listdir(BASE_DIR):
         depto_path = os.path.join(BASE_DIR, departamento)
         if not os.path.isdir(depto_path):
             continue
 
-        limpias_path = os.path.join(depto_path, 'inscripciones-limpias')
-        if not os.path.exists(limpias_path):
+        procesadas_path = os.path.join(depto_path, 'procesadas')
+        if not os.path.exists(procesadas_path):
             continue
 
-        for file in os.listdir(limpias_path):
-            if not file.startswith('limpio_') or not file.endswith('.csv'):
+        for charla_dir in os.listdir(procesadas_path):
+            charla_path = os.path.join(procesadas_path, charla_dir)
+            if not os.path.isdir(charla_path):
                 continue
 
-            charla = limpiar_nombre_charla(file)
-            path_csv = os.path.join(limpias_path, file)
+            charla = charla_dir
+            archivo_csv = f"{charla}.csv"
+            path_csv = os.path.join(charla_path, archivo_csv)
+
+            if not os.path.exists(path_csv):
+                logging.warning(f"No se encontró el archivo CSV esperado: {path_csv}")
+                continue
+
             logging.info(f"Procesando: {path_csv} (charla: {charla})")
 
             try:
@@ -110,40 +158,37 @@ def recorrer_y_enviar():
                         logging.warning(f"Fila sin email: {fila}")
                         continue
 
-                    nombre = fila.get('Nombre', 'Participante')
-                    legajo = fila.get('Legajo', '')
-                    dni = fila.get('DNI', '')
+                    # verifica si es el primer envio, si el email está en fallidos o si es un nuevo mail
+                    if (primer_envio or 
+                        email in emails_fallidos or 
+                        (email not in emails_exitosos and email not in emails_fallidos)):
+                        
+                        nombre = fila.get('Nombre', 'Participante')
+                        legajo = fila.get('Legajo', '')
+                        dni = fila.get('DNI', '')
 
-                    info_qr = f"{charla};{legajo};{dni};"
+                        info_qr = f"{charla};{legajo};{dni};"
 
-                    # Genera certificado con QR
-                    certificado_path = generar_certificado_con_qr(info_qr, charla)
+                        # Genera certificado con QR
+                        certificado_path = generar_qr_asistencia(info_qr, charla)
+                        
+                        # Maneja conexión SMTP
+                        if smtp is None:
+                            logging.info("Estableciendo conexión SMTP...")
+                            smtp = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+                            smtp.starttls()
+                            smtp.login(EMAIL_SENDER, EMAIL_PASSWORD)
+                        
+                        # Envia correo
+                        if enviar_correo(email, nombre, certificado_path, charla, smtp):
+                            k += 1
+                            os.remove(certificado_path)
 
-                    # Maneja conexión SMTP
-                    if smtp is None:
-                        logging.info("Estableciendo conexión SMTP...")
-                        smtp = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
-                        smtp.starttls()
-                        smtp.login(EMAIL_SENDER, EMAIL_PASSWORD)
-
-                    # Envia correo
-                    if enviar_correo(email, nombre, certificado_path, charla, smtp):
-                        k += 1
-                        os.remove(certificado_path)
-
-                        if k >= k_max:
-                            logging.info(f"Reiniciando conexión después de {k_max} correos")
-                            smtp.quit()
-                            smtp = None
-                            k = 0
-                    else:
-                        if smtp:
-                            try:
+                            if k >= k_max:
+                                logging.info(f"Reiniciando conexión después de {k_max} correos")
                                 smtp.quit()
-                            except:
-                                pass
-                            smtp = None
-                            k = 0
+                                smtp = None
+                                k = 0
 
             except Exception as e:
                 logging.error(f"Error procesando {path_csv}: {e}")
