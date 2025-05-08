@@ -108,13 +108,13 @@ def generar_qr_asistencia(info, codigo_charla):
     box_width, box_height = text_config['box_size']
     
     # Dibuja recuadro rojo (solo para DEBUG)
-    draw.rectangle(
+    '''draw.rectangle(
         [text_config['position'], 
         (text_config['position'][0] + text_config['box_size'][0],
          text_config['position'][1] + text_config['box_size'][1])],
         outline="red",
         width=3
-    )
+    )'''
 
     # Posicionamiento del texto
     y_start = y
