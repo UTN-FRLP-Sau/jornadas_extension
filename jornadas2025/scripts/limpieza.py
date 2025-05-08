@@ -2,18 +2,23 @@ import os
 import pandas as pd
 import re
 
-def limpiar_nombre_charla(nombre_archivo):
-    """Formatea el nombre de la charla."""
-    nombre = os.path.splitext(nombre_archivo)[0]
-    nombre = nombre.replace('(respuestas)', '').strip()
-    return nombre
-
 def validar_y_limpiar_csv(path_csv):
     """
     Lee un CSV, valida y limpia registros.
     Devuelve: df_clean, df_errors.
     """
     df = pd.read_csv(path_csv, dtype=str).fillna('')
+
+    # Eliminar espacios en blanco y convierte a minúsculas los nombres de las columnas
+    new_columns = []
+    for col in df.columns:
+        cleaned_col = col.strip().lower()
+        new_columns.append(cleaned_col)
+    df.columns = new_columns
+
+    # Elimina la columna 'marca temporal'
+    if 'marca temporal' in df.columns:
+        df = df.drop(columns=['marca temporal'])
 
     clean_rows = []
     error_rows = []
@@ -22,104 +27,155 @@ def validar_y_limpiar_csv(path_csv):
 
     for idx, row in df.iterrows():
         errors = []
-        # Trim
-        apellido = row['Apellido'].strip().title()
-        nombre   = row['Nombre'].strip().title()
-        dni      = row['DNI'].strip()
-        legajo   = row['Legajo'].strip()
-        mail     = row['Mail'].strip()
+        # Trim y limpieza
+        apellido = row.get('apellido', '').strip().title()
+        nombre = row.get('nombre', '').strip().title()
+        dni = row.get('dni', '').strip()
+        legajo = row.get('legajo', '').strip()
+        mail = row.get('mail', '').strip()
 
-        # Validaciones
-        if not dni.isnumeric():
+        # Formateo dni y legajo
+        dni = dni.replace('.', '')  # Elimino puntos del DNI
+        legajo = legajo.replace('.', '')  # Elimino puntos del legajo
+
+        # Valido si DNI y legajo son numéricos y el formato del mail
+        if dni and not dni.isnumeric():
             errors.append("DNI no numérico")
-        if not legajo.isnumeric():
+        if legajo and not legajo.isnumeric():
             errors.append("Legajo no numérico")
-        if not email_pattern.match(mail):
+        if mail and not email_pattern.match(mail):
             errors.append("Mail formato inválido")
 
+        # Si hubo errores los guardo en error_rows con número de fila y la información del registro
         if errors:
-            # Registro con fallo: guardamos todos los campos + motivo
             error_rows.append({
                 'Fila': idx + 1,
-                'Apellido': row['Apellido'],    # valores originales
-                'Nombre': row['Nombre'],
-                'DNI': row['DNI'],
-                'Legajo': row['Legajo'],
-                'Mail': row['Mail'],
+                'Apellido': row.get('apellido', ''),
+                'Nombre': row.get('nombre', ''),
+                'DNI': row.get('dni', ''),
+                'Legajo': row.get('legajo', ''),
+                'Mail': row.get('mail', ''),
                 'Errores': "; ".join(errors)
             })
-        else:
-            # Registro limpio
+        else: # Si no hay errores, guardo el registro limpio
             clean_rows.append({
                 'Apellido': apellido,
                 'Nombre': nombre,
-                'DNI': int(dni),
-                'Legajo': int(legajo),
-                'Mail': mail
+                'DNI': int(dni) if dni else None,
+                'Legajo': int(legajo) if legajo else None,
+                'Mail': mail if mail else None,
             })
 
-    df_clean  = pd.DataFrame(clean_rows)
+    # Creo DataFrames asegurando las columnas
+    columnas = ['Apellido', 'Nombre', 'DNI', 'Legajo', 'Mail']
+    df_clean = pd.DataFrame(clean_rows, columns=columnas)
     df_errors = pd.DataFrame(error_rows)
+    
     return df_clean, df_errors
 
 def agrupar_por_dominio(df):
     """Agrupa los correos por dominio y devuelve un DataFrame con el conteo."""
-    df['Dominio'] = df['Mail'].apply(lambda x: x.split('@')[1] if isinstance(x, str) else x)
-    agrupado = df.groupby('Dominio').agg({'Mail': 'count'}).rename(columns={'Mail': 'Conteo'}).reset_index()
+
+    if df.empty or 'Mail' not in df.columns:
+        print("DataFrame vacío o columna 'Mail' no encontrada. Retornando DataFrame vacío.")
+        return pd.DataFrame(columns=['Dominio', 'Conteo'])
+
+    # Filtra mails válidos
+    df_mails = df[df['Mail'].notna() & (df['Mail'] != '')].copy()
+
+    if df_mails.empty:
+        print("No hay mails válidos después del filtrado. Retornando DataFrame vacío.")
+        return pd.DataFrame(columns=['Dominio', 'Conteo'])
+
+    # Extrae dominios
+    df_mails['Dominio'] = df_mails['Mail'].str.split('@').str[1]
+    agrupado = df_mails.groupby('Dominio').size().reset_index(name='Conteo')
+
     return agrupado
 
-def procesar_csv(departamento, archivo_csv):
+def procesar_csv(departamento_path, archivo_csv):
     """Procesa un archivo CSV de una charla en un departamento."""
-    # Obtener el nombre de la charla
-    nombre_charla = limpiar_nombre_charla(archivo_csv)
+    # Extrae el código de la charla del nombre del archivo (sin extensión)
+    nombre_charla = os.path.splitext(archivo_csv)[0]
+    
+    # Crea estructura de carpetas
+    originales_dir = os.path.join(departamento_path, 'originales')
+    procesadas_dir = os.path.join(departamento_path, 'procesadas')
+    charla_dir = os.path.join(procesadas_dir, nombre_charla)
+    
+    # Asegura que existan las carpetas necesarias
+    os.makedirs(charla_dir, exist_ok=True)
 
-    # Leer el CSV original
-    path_csv = os.path.join(departamento, archivo_csv)
+    # Lee el CSV original
+    path_csv = os.path.join(originales_dir, archivo_csv)
 
-    # Limpiar y validar los datos
+    # Limpia y valida los datos
     df_clean, df_errors = validar_y_limpiar_csv(path_csv)
 
-    # Crear la carpeta de salida si no existe
-    salida_dir = os.path.join(departamento, 'inscripciones-limpias')
-    if not os.path.exists(salida_dir):
-        os.makedirs(salida_dir)
-
-    # Nombre base para los archivos
-    base = nombre_charla.replace(" ", "_")
-
-    # Guardar los registros limpios
-    archivo_limpio = os.path.join(salida_dir, f'limpio_{base}.csv')
+    # Guarda los archivos procesados
+    archivo_limpio = os.path.join(charla_dir, f'{nombre_charla}.csv')
     df_clean.to_csv(archivo_limpio, index=False)
 
-    # Guardar los registros con errores, si existen
-    archivo_errores = None
-    if not df_errors.empty:
-        archivo_errores = os.path.join(salida_dir, f'errores_{base}.csv')
-        df_errors.to_csv(archivo_errores, index=False)
+    archivo_errores = os.path.join(charla_dir, 'errores.csv')
+    df_errors.to_csv(archivo_errores, index=False)
 
-    # Agrupar mails por dominio y guardar
     agrupacion = agrupar_por_dominio(df_clean)
-    archivo_dominios = os.path.join(salida_dir, f'dominios_{base}.csv')
+    archivo_dominios = os.path.join(charla_dir, 'dominios.csv')
     agrupacion.to_csv(archivo_dominios, index=False)
 
     return archivo_limpio, archivo_errores, archivo_dominios
 
-def procesar_departamentos(directorio_base):
+def procesar_inscripciones(directorio_base):
     """Procesa todos los archivos CSV en el directorio base."""
+    # Recorro carpeta inscripciones
     for departamento in os.listdir(directorio_base):
+        # Construye la ruta completa al directorio del departamento
         departamento_path = os.path.join(directorio_base, departamento)
+        
+
         if os.path.isdir(departamento_path):
-            for archivo_csv in os.listdir(departamento_path):
+            # Construye la ruta al directorio 'originales' dentro del departamento
+            originales_dir = os.path.join(departamento_path, 'originales')
+            # Verifica si existe el directorio 'originales'
+            if not os.path.exists(originales_dir):
+                print(f"⚠️ No se encontró la carpeta 'originales' en {departamento}")
+                continue # Pasa al siguiente departamento si no existe 'originales'
+            
+            # Construye la ruta al directorio 'procesadas' dentro del departamento
+            procesadas_dir = os.path.join(departamento_path, 'procesadas')
+            # Crea el directorio 'procesadas' si no existe
+            os.makedirs(procesadas_dir, exist_ok=True)
+            
+            # Recorro los csv originales
+            for archivo_csv in os.listdir(originales_dir):
                 if archivo_csv.endswith('.csv'):
-                    archivo_limpio, archivo_errores, archivo_dominios = procesar_csv(departamento_path, archivo_csv)
-                    print(f"✅ Archivo limpio guardado en: {archivo_limpio}")
-                    if archivo_errores:
-                        print(f"⚠️  Errores guardados en: {archivo_errores}")
-                    print(f"📊 Agrupación de dominios guardada en: {archivo_dominios}")
+                    try:
+                        # Procesa el archivo CSV y obtiene las rutas de los archivos generados
+                        archivo_limpio, archivo_errores, archivo_dominios = procesar_csv(departamento_path, archivo_csv)
+                        
+                        print(f"✅ Procesado {archivo_csv} en {departamento}")
+                        print(f"  - Datos limpios: {archivo_limpio}")
+                        
+                        # Obtiene el tamaño del archivo de errores
+                        errores_size = os.path.getsize(archivo_errores) if os.path.exists(archivo_errores) else 0
+                        # Imprime la ruta del archivo de errores si su tamaño es mayor a 50 bytes (umbral para considerar que contiene errores)
+                        if errores_size > 50:  # Umbral mayor que solo headers
+                            print(f"  - Errores encontrados: {archivo_errores}")
+                        else:
+                            print("  - No se encontraron errores")
+                        
+                        # Ruta de dominios procesados
+                        print(f"  - Dominios procesados: {archivo_dominios}")
+                        
+                    # Captura cualquier excepción que ocurra durante el procesamiento del archivo
+                    except Exception as e:
+                        # Imprime un mensaje de error con la descripción de la excepción
+                        print(f"❌ Error procesando {archivo_csv} en {departamento}: {str(e)}")
+
 
 if __name__ == '__main__':
-    # Directorio base donde se encuentran las carpetas 'inscripciones' y 'inscripciones-limpias'
-    directorio_base = os.path.join(os.path.dirname(__file__), '..', 'inscripciones')  # Ruta desde 'scripts'
-    
-    # Procesar los departamentos y archivos CSV
-    procesar_departamentos(directorio_base)
+    # Directorio base donde se encuentran las carpetas de departamentos
+    directorio_base = os.path.join(os.path.dirname(__file__), '..', 'inscripciones')
+
+    # Procesa las inscripciones
+    procesar_inscripciones(directorio_base)
