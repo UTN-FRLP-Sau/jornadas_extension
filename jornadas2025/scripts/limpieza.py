@@ -20,6 +20,18 @@ def validar_y_limpiar_csv(path_csv):
     if 'marca temporal' in df.columns:
         df = df.drop(columns=['marca temporal'])
 
+    # Mapeo de sinónimos a nombres estándar
+    sinonimos_columnas = {
+        'correo': 'mail',
+        'email': 'mail',
+        'e-mail': 'mail',
+        'correo electronico': 'mail',
+        'correo electrónico': 'mail',
+        'apellido y nombre': 'nombre',
+    }
+
+    df.columns = [sinonimos_columnas.get(col, col) for col in df.columns]
+
     clean_rows = []
     error_rows = []
 
@@ -36,13 +48,14 @@ def validar_y_limpiar_csv(path_csv):
 
         # Formateo dni y legajo
         dni = dni.replace('.', '')  # Elimino puntos del DNI
+
         legajo = legajo.replace('.', '')  # Elimino puntos del legajo
 
         # Valido si DNI y legajo son numéricos y el formato del mail
         if dni and not dni.isnumeric():
             errors.append("DNI no numérico")
-        if legajo and not legajo.isnumeric():
-            errors.append("Legajo no numérico")
+        
+        # Valido el formato del mail (solo letras, números, guiones y puntos permitidos)
         if mail and not email_pattern.match(mail):
             errors.append("Mail formato inválido")
 
@@ -61,8 +74,8 @@ def validar_y_limpiar_csv(path_csv):
             clean_rows.append({
                 'Apellido': apellido,
                 'Nombre': nombre,
-                'DNI': int(dni) if dni else None,
-                'Legajo': int(legajo) if legajo else None,
+                'DNI': dni if dni else None,
+                'Legajo': legajo if legajo else None,
                 'Mail': mail if mail else None,
             })
 
