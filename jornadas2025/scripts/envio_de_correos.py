@@ -74,14 +74,14 @@ def obtener_emails_fallidos_desde_log(log_path):
     
     return emails_fallidos, emails_exitosos
 
-def enviar_correo(destinatario, nombre, certificado_path, charla, smtp):
+def enviar_correo(destinatario, nombre, qr_path, charla, smtp):
     """
-    Envía un correo electrónico con el certificado de asistencia.
+    Envía un correo electrónico con el qr de asistencia.
 
     Args:
         destinatario (str): Dirección de correo electrónico del destinatario.
         nombre (str): Nombre del participante.
-        certificado_path (str): Ruta al archivo del certificado.
+        qr_path (str): Ruta al archivo del qr.
         charla (str): Nombre de la charla.
         smtp (smtplib.SMTP): Conexión SMTP.
 
@@ -101,10 +101,10 @@ def enviar_correo(destinatario, nombre, certificado_path, charla, smtp):
         html_content = template.render(nombre=nombre, charla=charla)
         msg.attach(MIMEText(html_content, 'html'))
 
-        # Adjunta el certificado con QR
-        with open(certificado_path, 'rb') as f:
+        # Adjunta el QR
+        with open(qr_path, 'rb') as f:
             img = MIMEImage(f.read())
-            img.add_header('Content-ID', '<certificado>')
+            img.add_header('Content-ID', '<qr>')
             img.add_header('Content-Disposition', 'inline', filename='qr_asistencia.png')
             msg.attach(img)
 
@@ -173,8 +173,8 @@ def recorrer_y_enviar():
 
                         info_qr = f"{charla};{legajo};{dni};"
 
-                        # Genera certificado con QR
-                        certificado_path = generar_qr_asistencia(info_qr, charla)
+                        # Genera QR
+                        qr_path = generar_qr_asistencia(info_qr, charla)
                         
                         # Maneja conexión SMTP
                         if smtp is None:
@@ -184,9 +184,9 @@ def recorrer_y_enviar():
                             smtp.login(EMAIL_SENDER, EMAIL_PASSWORD)
                         
                         # Envia correo
-                        if enviar_correo(email, nombre, certificado_path, charla, smtp):
+                        if enviar_correo(email, nombre, qr_path, charla, smtp):
                             k += 1
-                            os.remove(certificado_path)
+                            os.remove(qr_path)
 
                             if k >= k_max:
                                 logging.info(f"Reiniciando conexion después de {k_max} correos")

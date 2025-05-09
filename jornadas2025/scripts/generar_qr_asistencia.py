@@ -54,11 +54,11 @@ def ajustar_texto(texto, fuente_path, box_width, box_height, font_size):
 
 def generar_qr_asistencia(info, codigo_charla):
     """
-    Genera un certificado con QR y texto personalizado con tamaño de fuente fijo.
+    Genera un QR con la info de la inscripcion y un texto personalizado con tamaño de fuente fijo.
     """
     try:
         template_path = os.path.join(os.path.dirname(__file__), 'template.jpg')
-        certificado = Image.open(template_path).convert("RGB")
+        template = Image.open(template_path).convert("RGB")
     except FileNotFoundError:
         raise FileNotFoundError("No se encontró el archivo template.jpg en el directorio")
 
@@ -78,13 +78,13 @@ def generar_qr_asistencia(info, codigo_charla):
 
     img_qr = img_qr.resize((700, 700), Image.Resampling.LANCZOS)
     qr_position = (100, 700)
-    certificado.paste(img_qr, qr_position)
+    template.paste(img_qr, qr_position)
 
     # Obtengo nombre de la charla
     nombre_charla = transformar_codigo_charla_a_nombre_charla(codigo_charla)
     texto_final = f"QR de asistencia a:\n{nombre_charla}"
 
-    draw = ImageDraw.Draw(certificado)
+    draw = ImageDraw.Draw(template)
     text_config = {
         'position': (90, 300),
         'box_size': (720, 420),
@@ -127,11 +127,11 @@ def generar_qr_asistencia(info, codigo_charla):
         y_start += text_height + 10
 
     # Guarda el resultado
-    output_path = os.path.join(os.path.dirname(__file__), 'certificado_generado.png')
-    certificado.save(output_path)
+    output_path = os.path.join(os.path.dirname(__file__), 'qr_generado.png')
+    template.save(output_path)
     return output_path
 
 if __name__ == '__main__':
     info_ejemplo = "c01;311;4423"
-    path = generar_qr_asistencia(info_ejemplo, codigo_charla="ma-09")
-    print(f"Certificado generado en: {path}")
+    path = generar_qr_asistencia(info_ejemplo, codigo_charla="cm-09")
+    print(f"QR generado en: {path}")
