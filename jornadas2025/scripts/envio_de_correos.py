@@ -105,7 +105,7 @@ def enviar_correo(destinatario, nombre, certificado_path, charla, smtp):
         with open(certificado_path, 'rb') as f:
             img = MIMEImage(f.read())
             img.add_header('Content-ID', '<certificado>')
-            img.add_header('Content-Disposition', 'inline', filename='certificado_inscripcion.png')
+            img.add_header('Content-Disposition', 'inline', filename='qr_asistencia.png')
             msg.attach(img)
 
         smtp.send_message(msg)
@@ -167,7 +167,7 @@ def recorrer_y_enviar():
                         email in emails_fallidos or 
                         (email not in emails_exitosos and email not in emails_fallidos)):
                         
-                        nombre = fila.get('Nombre', 'Participante')
+                        nombre = fila.get('Nombre', 'Asistente')
                         legajo = fila.get('Legajo', '')
                         dni = fila.get('DNI', '')
 
