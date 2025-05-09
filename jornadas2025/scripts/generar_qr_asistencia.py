@@ -14,9 +14,9 @@ def transformar_codigo_charla_a_nombre_charla(codigo_charla):
         with open(ruta_csv, encoding='utf-8') as archivo:
             lector = csv.reader(archivo, delimiter=';')
             for fila in lector:
-                if len(fila) < 2:
+                if len(fila) < 3:
                     continue
-                codigo, nombre = fila
+                codigo, nombre, _ = fila
                 if codigo.strip() == codigo_charla:
                     return nombre.strip()
     except FileNotFoundError:
@@ -132,6 +132,6 @@ def generar_qr_asistencia(info, codigo_charla):
     return output_path
 
 if __name__ == '__main__':
-    info_ejemplo = "c01;311;4423"
-    path = generar_qr_asistencia(info_ejemplo, codigo_charla="cm-09")
+    info_ejemplo = "m-09;311;4423"
+    path = generar_qr_asistencia(info_ejemplo, codigo_charla="m-09")
     print(f"QR generado en: {path}")

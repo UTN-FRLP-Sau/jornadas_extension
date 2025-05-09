@@ -8,6 +8,7 @@ from email.mime.image import MIMEImage
 from dotenv import load_dotenv
 from jinja2 import Template
 from generar_qr_asistencia import generar_qr_asistencia
+import csv
 
 load_dotenv()
 
@@ -43,6 +44,53 @@ logging.basicConfig(
 # Directorio base donde están los departamentos
 BASE_DIR = os.path.join(os.path.dirname(__file__), '..', 'inscripciones')
 BASE_DIR = os.path.abspath(BASE_DIR)
+
+def transformar_codigo_charla_a_nombre_charla(codigo_charla):
+    """
+    Transforma un código de charla en el nombre legible de la charla, 
+    buscando en el archivo CSV de referencias.
+    """
+    ruta_csv = os.path.join(os.path.dirname(__file__), '..', 'inscripciones', 'tabla-de-referencias.csv')
+    try:
+        with open(ruta_csv, encoding='utf-8') as archivo:
+            lector = csv.reader(archivo, delimiter=';')
+            for fila in lector:
+                if len(fila) < 3:
+                    continue
+                codigo, nombre_charla, _ = fila
+                if codigo.strip() == codigo_charla:
+                    return nombre_charla.strip()
+    except FileNotFoundError:
+        print(f"Archivo no encontrado: {ruta_csv}")
+    except Exception as e:
+        print(f"Error al leer el archivo CSV: {e}")
+    return codigo_charla
+
+
+def obtener_aula_por_codigo_charla(codigo_charla):
+    """
+    Dado un código de charla, retorna el aula correspondiente
+    según el archivo 'tabla-de-referencias.csv'.
+
+    Returns:
+        str: Aula de la charla, o el código si no se encuentra.
+    """
+    ruta_csv = os.path.join(os.path.dirname(__file__), '..', 'inscripciones', 'tabla-de-referencias.csv')
+    try:
+        with open(ruta_csv, encoding='utf-8') as archivo:
+            lector = csv.reader(archivo, delimiter=';')
+            for fila in lector:
+                if len(fila) < 3:
+                    continue
+                codigo, _, aula = fila
+                if codigo.strip() == codigo_charla:
+                    return aula.strip()
+    except FileNotFoundError:
+        print(f"Archivo no encontrado: {ruta_csv}")
+    except Exception as e:
+        print(f"Error al leer el archivo CSV: {e}")
+    return codigo_charla
+
 
 def obtener_emails_fallidos_desde_log(log_path):
     """
@@ -89,8 +137,11 @@ def enviar_correo(destinatario, nombre, qr_path, charla, smtp):
         bool: True si el correo se envió correctamente, False en caso contrario.
     """
     try:
+        # Transformo el código de charla a nombre legible
+        charla_nombre = transformar_codigo_charla_a_nombre_charla(charla)
+
         msg = MIMEMultipart()
-        msg['Subject'] = f"QR de asistencia para la charla: {charla} - Jornadas de Formación Profesional 2025"
+        msg['Subject'] = f"QR de asistencia: {charla_nombre}"
         msg['From'] = EMAIL_ALIAS
         msg['To'] = destinatario
         msg['Reply-To'] = EMAIL_SENDER
@@ -98,7 +149,10 @@ def enviar_correo(destinatario, nombre, qr_path, charla, smtp):
 
         # Cuerpo del mensaje
         template = Template(HTML_TEMPLATE)
-        html_content = template.render(nombre=nombre, charla=charla)
+
+        aula = obtener_aula_por_codigo_charla(charla)
+
+        html_content = template.render(nombre=nombre, charla=charla_nombre, aula=aula)
         msg.attach(MIMEText(html_content, 'html'))
 
         # Adjunta el QR
