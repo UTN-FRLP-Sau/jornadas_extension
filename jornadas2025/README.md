@@ -122,3 +122,26 @@ A continuación, se detallan los pasos para ejecutar este proyecto localmente:
     ```
 
     Esto iniciará un servidor web local en la dirección `http://localhost:8000`.
+
+## Guía para Limpieza de datos y Envío de mails:
+
+1. **Crear Carpetas para los csv de las inscripciones**
+   - Dentro de jornadas2025 crear una carpeta que se llame 'inscripciones'
+   - Dentro de 'inscripciones' crear una carpeta por cada depto o tipo de charla (sistemas,basicas,magistral, etc.)
+   - Dentro de cada una de esas carpetas crear una carpeta que se llame 'originales'. Allí se deberán guardar los csv de las inscripciones a procesar. Los csv guardados deberán tener como nombre un código de charla a elección propia, por ejemplo: s-01.csv(para la charla 1 de sistemas),cm-01(para la charla 1 de magistral), etc.
+   - Dentro de la carpeta 'inscripciones' crear un archivo csv 'tabla-de-referencias.csv' que contenga: codigo de charla, nombre de charla y aula. Deberá rellenarse con la info correspondiente a cada charla. Este archivo será necesario para obtener el nombre de las charlas y nombre de aula, a partir del código de charla.
+   - Nota: Tener cuidado con la consistencia de los nombres. Los nombres de los csv originales deben coincidir con los codigos de las charlas definidos en 'tabla-de-referencias.csv'.
+
+2. **Limpieza de datos**
+   - Para depurar los csv de inscripciones, ejecutar el script 'limpieza.py'. Esto normalizará los datos y filtrará registros con errores.
+   - Los resultados de la limpieza se guardaran en la carpeta 'procesadas' que se genera automáticamente dentro de la carpeta de cada charla.
+   - Se van a generar 3 archivos csv: uno con los registros que tuvieron errores y no pasaron el filtro, otro con un conteo de dominios de correos electrónicos, y el último será el csv ya depurado y que se usará para armar los mails y generar los QR.
+
+3. **Envío de mails**
+   - Para hacer el envio de mails es requisito previo haber generado los csv ya depurados con el script de 'limpieza.py'.
+   - Ejecutar el script 'envio_de_correos.py'
+   - Al ejecutarlo se enviarán los correos con los QR generados para cada inscripción y se guardará un registro del envio (ya sea exitoso o fallido) en 'scripts/logs/lenviar_correos.log'.
+   - En caso de re ejecutar el script, los correos se enviaran solo a los envío fallidos registrados en el log, y a aquellos nuevos registros que hayan sido agregados en los csv depurados (si es que se agregaron nuevos registros desde la última ejecución)
+   - Para hacer un re envío masivo a todos sin validación de los logs, activar la FLAG 'REINTENTAR_TODOS' cambiandola a 'True'
+
+
