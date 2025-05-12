@@ -9,6 +9,9 @@ from dotenv import load_dotenv
 from jinja2 import Template
 from generar_qr_asistencia import generar_qr_asistencia
 import csv
+from email.mime.base import MIMEBase
+from email import encoders
+import re
 
 load_dotenv()
 
@@ -94,30 +97,26 @@ def obtener_aula_por_codigo_charla(codigo_charla):
 
 def obtener_emails_fallidos_desde_log(log_path):
     """
-    Obtiene la lista de (email, charla) a los que se pudo o no se pudo enviar el correo desde el archivo de log.
-
-    Returns:
-        tuple: (set de (email, charla) fallidos, set de (email, charla) exitosos)
+    Obtiene la lista de (email, charla) exitosos y fallidos del log.
     """
     emails_fallidos = set()
     emails_exitosos = set()
 
     if os.path.exists(log_path):
-        with open(log_path, 'r', encoding='utf-8') as log_file:
+        with open(log_path, 'r', encoding='latin-1') as log_file:
             for linea in log_file:
-                if 'Error al enviar correo a' in linea:
-                    partes = linea.split('Error al enviar correo a')[1].split('para la charla')
-                    if len(partes) >= 2:
-                        email = partes[0].strip()
-                        charla = partes[1].split(':')[0].strip()
-                        emails_fallidos.add((email, charla))
-                elif 'Correo enviado a' in linea:
-                    partes = linea.split('Correo enviado a')[1].split('para la charla')
-                    if len(partes) >= 2:
-                        email = partes[0].strip()
-                        charla = partes[1].strip()
-                        emails_exitosos.add((email, charla))
+                match_error = re.search(r'Error al enviar correo a (.+?) para la charla (\S+)', linea)
+                if match_error:
+                    email = match_error.group(1).strip()
+                    charla = match_error.group(2).strip()
+                    emails_fallidos.add((email, charla))
+                    continue
 
+                match_ok = re.search(r'Correo enviado a (.+?) para la charla: (\S+)', linea)
+                if match_ok:
+                    email = match_ok.group(1).strip()
+                    charla = match_ok.group(2).strip()
+                    emails_exitosos.add((email, charla))
     return emails_fallidos, emails_exitosos
 
 
@@ -156,10 +155,14 @@ def enviar_correo(destinatario, nombre, qr_path, charla, smtp):
 
         # Adjunta el QR
         with open(qr_path, 'rb') as f:
-            img = MIMEImage(f.read())
-            img.add_header('Content-ID', '<qr>')
-            img.add_header('Content-Disposition', 'inline', filename='qr_asistencia.png')
-            msg.attach(img)
+            adjunto = MIMEBase('application', 'octet-stream')
+            adjunto.set_payload(f.read())
+            encoders.encode_base64(adjunto)
+            adjunto.add_header(
+                'Content-Disposition',
+                f'attachment; filename="qr_asistencia_{nombre}.png"'
+            )
+            msg.attach(adjunto)
 
         smtp.send_message(msg)
         logging.info(f"Correo enviado a {destinatario} para la charla: {charla}")
