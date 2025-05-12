@@ -160,7 +160,7 @@ def enviar_correo(destinatario, nombre, qr_path, charla, smtp):
             encoders.encode_base64(adjunto)
             adjunto.add_header(
                 'Content-Disposition',
-                f'attachment; filename="qr_asistencia_{nombre}.png"'
+                f'attachment; filename="qr_asistencia.png"'
             )
             msg.attach(adjunto)
 
