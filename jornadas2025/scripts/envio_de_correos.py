@@ -94,33 +94,32 @@ def obtener_aula_por_codigo_charla(codigo_charla):
 
 def obtener_emails_fallidos_desde_log(log_path):
     """
-    Obtiene la lista de emails a los que no se pudo enviar el correo desde el archivo de log.
-    También obtiene los emails que ya fueron enviados correctamente.
-
-    Args:
-        log_path (str): Ruta al archivo de log.
+    Obtiene la lista de (email, charla) a los que se pudo o no se pudo enviar el correo desde el archivo de log.
 
     Returns:
-        tuple: (set de emails fallidos, set de emails exitosos)
+        tuple: (set de (email, charla) fallidos, set de (email, charla) exitosos)
     """
     emails_fallidos = set()
     emails_exitosos = set()
-    
+
     if os.path.exists(log_path):
         with open(log_path, 'r', encoding='utf-8') as log_file:
             for linea in log_file:
                 if 'Error al enviar correo a' in linea:
                     partes = linea.split('Error al enviar correo a')[1].split('para la charla')
-                    if len(partes) >= 1:
+                    if len(partes) >= 2:
                         email = partes[0].strip()
-                        emails_fallidos.add(email)
+                        charla = partes[1].split(':')[0].strip()
+                        emails_fallidos.add((email, charla))
                 elif 'Correo enviado a' in linea:
                     partes = linea.split('Correo enviado a')[1].split('para la charla')
-                    if len(partes) >= 1:
+                    if len(partes) >= 2:
                         email = partes[0].strip()
-                        emails_exitosos.add(email)
-    
+                        charla = partes[1].strip()
+                        emails_exitosos.add((email, charla))
+
     return emails_fallidos, emails_exitosos
+
 
 def enviar_correo(destinatario, nombre, qr_path, charla, smtp):
     """
@@ -170,7 +169,6 @@ def enviar_correo(destinatario, nombre, qr_path, charla, smtp):
         return False
 
 def recorrer_y_enviar():
-    logging.info(f"Buscando archivos en: {BASE_DIR}")
     k = 0
     k_max = 10
     smtp = None
@@ -215,11 +213,11 @@ def recorrer_y_enviar():
                         logging.warning(f"Fila sin email: {fila}")
                         continue
 
-                    # verifica si es el primer envio, si el email está en fallidos o si es un nuevo mail, si reintaar todos es true reenviara a todos
+                    # verifica: si es el primer envio, si la combinación email+charla está en fallidos, si es un nuevo mail, o si reintentar todos es true
                     if (REINTENTAR_TODOS or
                         primer_envio or 
-                        email in emails_fallidos or 
-                        (email not in emails_exitosos and email not in emails_fallidos)):
+                        (email, charla) in emails_fallidos or 
+                        ((email, charla) not in emails_exitosos and (email, charla) not in emails_fallidos)):
                         
                         nombre = fila.get('Nombre', 'Asistente')
                         legajo = fila.get('Legajo', '')
@@ -247,7 +245,6 @@ def recorrer_y_enviar():
                                 smtp.quit()
                                 smtp = None
                                 k = 0
-
             except Exception as e:
                 logging.error(f"Error procesando {path_csv}: {e}")
                 if smtp:
