@@ -28,6 +28,8 @@ def validar_y_limpiar_csv(path_csv):
         'correo electronico': 'mail',
         'correo electrónico': 'mail',
         'apellido y nombre': 'nombre',
+        'apellido y  nombre': 'nombre',
+        'Apellido ' : 'apellido',
     }
 
     df.columns = [sinonimos_columnas.get(col, col) for col in df.columns]
