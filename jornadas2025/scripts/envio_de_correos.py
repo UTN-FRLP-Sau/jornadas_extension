@@ -244,7 +244,7 @@ def recorrer_y_enviar():
                             os.remove(qr_path)
 
                             if k >= k_max:
-                                logging.info(f"Reiniciando conexion después de {k_max} correos")
+                                logging.info(f"Reiniciando conexion despues de {k_max} correos")
                                 smtp.quit()
                                 smtp = None
                                 k = 0
