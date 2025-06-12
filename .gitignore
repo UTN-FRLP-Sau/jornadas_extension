@@ -1,5 +1,7 @@
 **/venv/
 **/.env
 **/inscripciones
+**/certificados
+**/asistencias
 **/logs
 **/__pycache__
