@@ -64,14 +64,14 @@ def generar_contenido_certificado_overlay(nombre_completo, documento, temp_outpu
     text_width_nombre = pdf.get_string_width(nombre_completo)
     x_centered_nombre = (pdf.w - text_width_nombre) / 2
     pdf.set_xy(x_centered_nombre, y_nombre_mm)
-    pdf.cell(w=text_width_nombre, h=0, txt=nombre_completo, align='C')
+    pdf.cell(w=text_width_nombre, h=0, text=nombre_completo, align='C')
 
     # Documento
     pdf.set_font(CUSTOM_FONT_NAME, '', font_size_dni) 
     text_width_dni = pdf.get_string_width(f"DNI: {documento}")
     x_centered_dni = (pdf.w - text_width_dni) / 2
     pdf.set_xy(x_centered_dni, y_dni_mm)
-    pdf.cell(w=text_width_dni, h=0, txt=f"DNI: {documento}", align='C')
+    pdf.cell(w=text_width_dni, h=0, text=f"DNI: {documento}", align='C')
     
     # Fecha de Emisión
     '''
