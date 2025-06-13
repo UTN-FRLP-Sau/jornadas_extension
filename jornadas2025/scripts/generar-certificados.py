@@ -4,6 +4,7 @@ import pikepdf
 import os
 from datetime import date
 import unicodedata
+import json
 
 # --- Configuración de Rutas y Fuentes ---
 
@@ -21,6 +22,9 @@ CUSTOM_FONT_NAME = 'Planc-Bold'
 # Ruta al PDF base
 TEMPLATE_PDF_PATH = os.path.join(BASE_DIR, 'certificado-jfp-2025.pdf')
 
+# Ruta para el archivo de mapeo de correos
+# Este archivo guardará el nombre del PDF, la subcarpeta y el correo.
+EMAIL_MAP_FILE = os.path.join(PROYECTO_DIR, 'certificados' ,'certificados_a_enviar.json')
 
 def generar_contenido_certificado_overlay(nombre_completo, documento, temp_output_pdf):
     """
@@ -163,6 +167,9 @@ def procesar_csvs_y_generar_certificados(carpeta_csvs='asistencias', subcarpeta_
     if max_registros_test is not None:
         print(f"  (Modo de testeo: procesando solo los primeros {max_registros_test} registros por archivo)")
 
+    # --- Lista para almacenar los datos de envío ---
+    # Usamos una lista de diccionarios que luego convertiremos a DataFrame y guardaremos como JSON.
+    datos_envio_list = []
 
     for csv_file in csv_files:
         csv_path = os.path.join(ruta_origen_csvs, csv_file)
@@ -182,10 +189,17 @@ def procesar_csvs_y_generar_certificados(carpeta_csvs='asistencias', subcarpeta_
             # Defino los nombres de columnas esperados
             COL_APELLIDO_NOMBRES = 'Apellido y Nombres'
             COL_DOCUMENTO = 'Documento'
+            COL_MAIL = 'Mail'
+            COL_MAIL_UTN = 'Mail UTN'
             
             # Verifico si las columnas esenciales existen en el DataFrame
-            if not all(col in df.columns for col in [COL_APELLIDO_NOMBRES, COL_DOCUMENTO]):
-                print(f"Error: Una o más columnas esenciales ('{COL_APELLIDO_NOMBRES}', '{COL_DOCUMENTO}') no se encontraron en '{csv_file}'. Saltando este archivo.")
+            if not all(col in df.columns for col in [COL_APELLIDO_NOMBRES, COL_DOCUMENTO, COL_MAIL]):
+                print(f"Error: Una o más columnas esenciales ('{COL_APELLIDO_NOMBRES}', '{COL_DOCUMENTO}', '{COL_MAIL}') no se encontraron en '{csv_file}'. Saltando este archivo.")
+                continue
+
+            # Verifico si al menos una de las columnas de correo existe
+            if not (COL_MAIL in df.columns or COL_MAIL_UTN in df.columns):
+                print(f"Error: Ninguna columna de correo ('{COL_MAIL}' o '{COL_MAIL_UTN}') encontrada en '{csv_file}'. Saltando este archivo.")
                 continue
 
             # Determino cuántos registros procesar (todos o solo los de test)
@@ -200,19 +214,43 @@ def procesar_csvs_y_generar_certificados(carpeta_csvs='asistencias', subcarpeta_
             for index, row in df_procesar.iterrows():
                 apellido_nombre = row[COL_APELLIDO_NOMBRES]
                 documento = str(row[COL_DOCUMENTO])
-                
+                correo_electronico = None
+
+                # Usa el campo 'Mail'
+                if COL_MAIL in row and pd.notna(row[COL_MAIL]) and str(row[COL_MAIL]).strip() != '':
+                    correo_electronico = str(row[COL_MAIL]).strip()
+                # Si 'Mail' está vacío, no existe o es NaN, intenta usar 'Mail UTN'
+                elif COL_MAIL_UTN in row and pd.notna(row[COL_MAIL_UTN]) and str(row[COL_MAIL_UTN]).strip() != '':
+                    correo_electronico = str(row[COL_MAIL_UTN]).strip()
+
+                # Si después de ambas verificaciones el correo sigue siendo nulo, se salta el registro
+                if not correo_electronico:
+                    print(f"Advertencia: No se encontró un correo electrónico válido para '{apellido_nombre}' (DNI: {documento}). Saltando generación de certificado.")
+                    continue # Continúa con la siguiente fila en el CSV
+
                 # Normaliza el nombre para usarlo en el nombre del archivo PDF
                 nombre_limpio = unicodedata.normalize('NFKD', apellido_nombre).encode('ascii', 'ignore').decode('utf-8')
                 nombre_limpio = nombre_limpio.replace(" ", "-").replace(",", "").replace(".", "").replace("'", "").lower()
                 
+                # Normaliza el DNI para usarlo en el nombre del archivo PDF y asegurar unicidad
                 documento_limpio = str(documento).strip().replace(".", "").replace("-", "")
 
+                # Nombre del archivo PDF final, incluyendo el DNI para unicidad
                 nombre_pdf = f"{nombre_limpio}-{documento_limpio}-certificado.pdf" 
                 ruta_salida_pdf = os.path.join(ruta_subcarpeta_certificados, nombre_pdf)
 
                 # Genera el certificado final
                 generar_certificado_final(apellido_nombre, documento, ruta_salida_pdf)
-                print(f"  Generado certificado para '{apellido_nombre}'-'{documento_limpio}' en '{ruta_salida_pdf}'")
+                print(f"  Generado certificado para '{apellido_nombre}' (DNI {documento_limpio}) en '{ruta_salida_pdf}'")
+
+                # Agrega los datos al listado para el mapeo de correos
+                datos_envio_list.append({
+                    'nombre_completo': apellido_nombre,
+                    'documento': documento,
+                    'correo_destinatario': correo_electronico,
+                    'nombre_pdf_generado': nombre_pdf,
+                    'subcarpeta_dia': nombre_subcarpeta
+                })
 
         except FileNotFoundError:
             print(f"Error: El archivo '{csv_path}' no fue encontrado.")
@@ -220,6 +258,19 @@ def procesar_csvs_y_generar_certificados(carpeta_csvs='asistencias', subcarpeta_
             print(f"Error: Columna esperada no encontrada en '{csv_file}'. Detalle: {e}. Asegúrate de que los encabezados estén correctos y sin espacios extra.")
         except Exception as e:
             print(f"Ocurrió un error inesperado al procesar '{csv_file}': {e}")
+    
+    # Guarda el Dataframe como JSON
+    if datos_envio_list:
+        df_envio = pd.DataFrame(datos_envio_list)
+        try:
+            df_envio.to_json(EMAIL_MAP_FILE, orient='records', indent=4, force_ascii=False)
+            print(f"\nMapeo de certificados a correos guardado en: {EMAIL_MAP_FILE}")
+
+
+        except Exception as e:
+            print(f"Error al guardar el mapeo de correos en '{EMAIL_MAP_FILE}': {e}")
+    else:
+        print("\nNo se generaron certificados para enviar, no se creó el archivo de mapeo.")
 
 # --- Ejecución del script ---
 if __name__ == "__main__":
