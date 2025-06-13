@@ -5,6 +5,7 @@ import os
 from datetime import date
 import unicodedata
 import json
+from pypdf import PdfReader
 
 # --- Configuración de Rutas y Fuentes ---
 
@@ -22,6 +23,26 @@ CUSTOM_FONT_NAME = 'Planc-Bold'
 # Ruta al PDF base
 TEMPLATE_PDF_PATH = os.path.join(BASE_DIR, 'certificado-jfp-2025.pdf')
 
+
+'''
+ruta_plantilla = TEMPLATE_PDF_PATH
+
+# Abrir PDF
+reader = PdfReader(ruta_plantilla)
+pagina = reader.pages[0]
+
+# Obtener tamaño en puntos (pt)
+media_box = pagina.mediabox
+ancho_pts = float(media_box.width)
+alto_pts = float(media_box.height)
+
+# Convertir puntos a milímetros (1 punto = 0.3527777778 mm)
+ancho_mm = ancho_pts * 0.3527777778
+alto_mm = alto_pts * 0.3527777778
+
+print(f"Ancho plantilla: {ancho_mm:.2f} mm")
+print(f"Alto plantilla: {alto_mm:.2f} mm")'''
+
 # Ruta para el archivo de mapeo de correos
 # Este archivo guardará el nombre del PDF, la subcarpeta y el correo.
 EMAIL_MAP_FILE = os.path.join(PROYECTO_DIR, 'certificados' ,'certificados_a_enviar.json')
@@ -31,51 +52,69 @@ def generar_contenido_certificado_overlay(nombre_completo, documento, temp_outpu
     Genera el contenido dinámico del certificado (nombre y DNI) en un PDF temporal
     usando FPDF2. Este PDF temporal luego se superpondrá a la plantilla base.
     """
-    pdf = FPDF(unit='mm', format='letter')
+    pdf = FPDF(unit='mm', format=(297, 210))
     pdf.add_page()
-    
+
     # Registro la fuente personalizada
-    global CUSTOM_FONT_NAME 
-    
+    global CUSTOM_FONT_NAME
+
     try:
-        pdf.add_font(CUSTOM_FONT_NAME, '', FONT_PATH) 
+        pdf.add_font(CUSTOM_FONT_NAME, '', FONT_PATH)
     except Exception as e:
         print(f"Error al registrar la fuente '{CUSTOM_FONT_NAME}' con FPDF2: {e}")
-        # Si falla, uso la fuente estandar y la registro
         CUSTOM_FONT_NAME = "Helvetica"
         print(f"Usando 'Helvetica' como fuente de respaldo para FPDF2.")
 
-    # Configuración de COORDENADAS con FPDF2:
-    # Coordenadas (X, Y) donde (0,0) es la esquina SUPERIOR IZQUIERDA. Unidades en mm.
-    # y_nombre_mm: Para mover el texto hacia abajo, aumentar este valor.
-    # x_centered_nombre: Para mover el texto a la derecha, aumentar este valor.
-
-    # Coordenadas y tamaño de fuente para el nombre
-    x_nombre_center_mm = (pdf.w / 2)  # Centrado horizontalmente
-    y_nombre_mm = 132.72              # mm desde la parte superior
-    font_size_nombre = 30
-    
-    # Coordenadas y tamaño de fuente para DNI
-    x_dni_center_mm = (pdf.w / 2)     # Centrado horizontalmente
-    y_dni_mm = 147.96                 # mm desde la parte superior
-    font_size_dni = 30
-
     # --- Contenido Dinámico ---
-    # Nombre del alumno
+
+    font_size_nombre = 31
+    font_size_dni = 31
+    y_nombre_mm = 93
+    y_dni_mm = y_nombre_mm + 15
+
+    # Preparación del texto
+    nombre_completo = nombre_completo.upper()
+
+    # Quitar márgenes
+    pdf.set_left_margin(0)
+    pdf.set_right_margin(0)
+
+    # Setear color
+    pdf.set_text_color(43, 79, 254)
+
+    # Dimensiones de la caja fija
+    fixed_width = 270
+    fixed_height = 20
+    x_fixed = (pdf.w - fixed_width) / 2
+
+    # --- CENTRADO DE NOMBRE (en caja fija y sin cortes) ---
     pdf.set_font(CUSTOM_FONT_NAME, '', font_size_nombre)
+    text_width = pdf.get_string_width(nombre_completo)
 
-    # Calcula el ancho del texto para centrarlo
-    text_width_nombre = pdf.get_string_width(nombre_completo)
-    x_centered_nombre = (pdf.w - text_width_nombre) / 2
-    pdf.set_xy(x_centered_nombre, y_nombre_mm)
-    pdf.cell(w=text_width_nombre, h=0, text=nombre_completo, align='C')
+    # Si no entra, escala fuente
+    if text_width > fixed_width:
+        scale = fixed_width / text_width
+        adjusted_font_size = font_size_nombre * scale
+        pdf.set_font(CUSTOM_FONT_NAME, '', adjusted_font_size)
 
-    # Documento
-    pdf.set_font(CUSTOM_FONT_NAME, '', font_size_dni) 
-    text_width_dni = pdf.get_string_width(f"DNI: {documento}")
-    x_centered_dni = (pdf.w - text_width_dni) / 2
-    pdf.set_xy(x_centered_dni, y_dni_mm)
-    pdf.cell(w=text_width_dni, h=0, text=f"DNI: {documento}", align='C')
+    # Dibuja cell con el nombre centrado en caja
+    pdf.set_xy(x_fixed, y_nombre_mm)
+    pdf.cell(w=fixed_width, h=fixed_height, text=nombre_completo, align='C', border=0)
+
+    # --- CENTRADO DEL DNI ---
+    pdf.set_font(CUSTOM_FONT_NAME, '', font_size_dni)
+    text_dni = f"DNI: {documento}"
+    text_dni_width = pdf.get_string_width(text_dni)
+
+    # Escala fuente si no entra
+    if text_dni_width > fixed_width:
+        scale_dni = fixed_width / text_dni_width
+        adjusted_font_size_dni = font_size_dni * scale_dni
+        pdf.set_font(CUSTOM_FONT_NAME, '', adjusted_font_size_dni)
+
+    pdf.set_xy(x_fixed, y_dni_mm)
+    pdf.cell(w=fixed_width, h=fixed_height, text=text_dni, align='C', border=0)
+
     
     # Fecha de Emisión
     '''
