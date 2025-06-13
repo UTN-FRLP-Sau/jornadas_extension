@@ -205,12 +205,14 @@ def procesar_csvs_y_generar_certificados(carpeta_csvs='asistencias', subcarpeta_
                 nombre_limpio = unicodedata.normalize('NFKD', apellido_nombre).encode('ascii', 'ignore').decode('utf-8')
                 nombre_limpio = nombre_limpio.replace(" ", "-").replace(",", "").replace(".", "").replace("'", "").lower()
                 
-                nombre_pdf = f"{nombre_limpio}-certificado.pdf"
+                documento_limpio = str(documento).strip().replace(".", "").replace("-", "")
+
+                nombre_pdf = f"{nombre_limpio}-{documento_limpio}-certificado.pdf" 
                 ruta_salida_pdf = os.path.join(ruta_subcarpeta_certificados, nombre_pdf)
 
                 # Genera el certificado final
                 generar_certificado_final(apellido_nombre, documento, ruta_salida_pdf)
-                print(f"  Generado certificado para '{apellido_nombre}' en '{ruta_salida_pdf}'")
+                print(f"  Generado certificado para '{apellido_nombre}'-'{documento_limpio}' en '{ruta_salida_pdf}'")
 
         except FileNotFoundError:
             print(f"Error: El archivo '{csv_path}' no fue encontrado.")
