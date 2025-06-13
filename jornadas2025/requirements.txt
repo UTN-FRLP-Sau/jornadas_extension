@@ -2,3 +2,5 @@ pandas
 qrcode
 python-dotenv
 Jinja2
+fpdf2
+pikepdf
