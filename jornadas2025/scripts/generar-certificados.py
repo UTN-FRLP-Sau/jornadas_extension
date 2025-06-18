@@ -6,6 +6,7 @@ from datetime import date
 import unicodedata
 import json
 from pypdf import PdfReader
+import argparse
 
 # --- Configuración de Rutas y Fuentes ---
 
@@ -311,8 +312,66 @@ def procesar_csvs_y_generar_certificados(carpeta_csvs='asistencias', subcarpeta_
     else:
         print("\nNo se generaron certificados para enviar, no se creó el archivo de mapeo.")
 
+
+
+def generar_certificado_prueba():
+    """
+    Genera un certificado de prueba con datos hardcodeados
+    y lo guarda en certificados/prueba/.
+    También actualiza el archivo certificados_a_enviar.json con esta entrada.
+    """
+    nombre_completo = "nombre apellido"
+    documento = "123456"
+    correo_destinatario = "correo@gmail.com"
+
+    nombre_pdf_generado = "nombre-apellido-123456-certificado.pdf"
+    subcarpeta_dia = "prueba"
+
+    carpeta_destino = os.path.join(PROYECTO_DIR, "certificados", subcarpeta_dia)
+    if not os.path.exists(carpeta_destino):
+        os.makedirs(carpeta_destino)
+
+    ruta_pdf = os.path.join(carpeta_destino, nombre_pdf_generado)
+    generar_certificado_final(nombre_completo, documento, ruta_pdf)
+    print(f"Certificado de prueba generado: {ruta_pdf}")
+
+    # Actualiza el JSON con el nuevo certificado
+    entrada = {
+        "nombre_completo": nombre_completo,
+        "documento": documento,
+        "correo_destinatario": correo_destinatario,
+        "nombre_pdf_generado": nombre_pdf_generado,
+        "subcarpeta_dia": subcarpeta_dia
+    }
+
+    try:
+        if os.path.exists(EMAIL_MAP_FILE):
+            with open(EMAIL_MAP_FILE, "r", encoding="utf-8") as f:
+                datos = json.load(f)
+        else:
+            datos = []
+
+        datos.append(entrada)
+
+        with open(EMAIL_MAP_FILE, "w", encoding="utf-8") as f:
+            json.dump(datos, f, ensure_ascii=False, indent=4)
+
+        print(f"Entrada agregada a {EMAIL_MAP_FILE}")
+    except Exception as e:
+        print(f"Error al actualizar {EMAIL_MAP_FILE}: {e}")
+
+
 # --- Ejecución del script ---
 if __name__ == "__main__":
-    # Para procesar todos los registros, poner max_registros_test=None
-    procesar_csvs_y_generar_certificados(max_registros_test=1)
-    print("\n¡Proceso de generación de certificados finalizado!")
+    parser = argparse.ArgumentParser(description="Generador de certificados UTN FRLP")
+    parser.add_argument('--test', action='store_true', help="Generar certificado de prueba manual")
+    parser.add_argument('--todos', action='store_true', help="Procesar todos los registros desde CSVs")
+
+    args = parser.parse_args()
+
+    if args.test:
+        generar_certificado_prueba()
+    elif args.todos:
+        procesar_csvs_y_generar_certificados(max_registros_test=None)
+    else:
+        print("No se especificó ninguna opción. Usá --help para ver opciones.")
