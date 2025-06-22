@@ -306,19 +306,17 @@ def procesar_csvs_y_generar_certificados(carpeta_csvs='asistencias', subcarpeta_
             df_envio.to_json(EMAIL_MAP_FILE, orient='records', indent=4, force_ascii=False)
             print(f"\nMapeo de certificados a correos guardado en: {EMAIL_MAP_FILE}")
 
-
         except Exception as e:
             print(f"Error al guardar el mapeo de correos en '{EMAIL_MAP_FILE}': {e}")
     else:
         print("\nNo se generaron certificados para enviar, no se creó el archivo de mapeo.")
 
 
-
 def generar_certificado_prueba():
     """
     Genera un certificado de prueba con datos hardcodeados
     y lo guarda en certificados/prueba/.
-    También actualiza el archivo certificados_a_enviar.json con esta entrada.
+    También actualiza un archivo JSON ESPECÍFICO DE PRUEBA con esta entrada.
     """
     nombre_completo = "nombre apellido"
     documento = "123456"
@@ -328,6 +326,9 @@ def generar_certificado_prueba():
     subcarpeta_dia = "prueba"
 
     carpeta_destino = os.path.join(PROYECTO_DIR, "certificados", subcarpeta_dia)
+    
+    EMAIL_MAP_TEST_FILE = os.path.join(carpeta_destino, 'certificados_a_enviar_prueba.json')
+
     if not os.path.exists(carpeta_destino):
         os.makedirs(carpeta_destino)
 
@@ -345,20 +346,25 @@ def generar_certificado_prueba():
     }
 
     try:
-        if os.path.exists(EMAIL_MAP_FILE):
-            with open(EMAIL_MAP_FILE, "r", encoding="utf-8") as f:
-                datos = json.load(f)
-        else:
-            datos = []
-
+        datos = [] # Inicializamos como lista vacía por defecto
+        # Usa el archivo JSON de PRUEBA
+        if os.path.exists(EMAIL_MAP_TEST_FILE):
+            # Verifica si el archivo no está vacío antes de intentar cargarlo
+            if os.path.getsize(EMAIL_MAP_TEST_FILE) > 0:
+                with open(EMAIL_MAP_TEST_FILE, "r", encoding="utf-8") as f:
+                    datos = json.load(f)
+            else:
+                print(f"Advertencia: El archivo '{EMAIL_MAP_TEST_FILE}' existe pero está vacío. Se inicializará como una lista vacía.")
+        
         datos.append(entrada)
 
-        with open(EMAIL_MAP_FILE, "w", encoding="utf-8") as f:
+        # Guarda en el archivo JSON de PRUEBA
+        with open(EMAIL_MAP_TEST_FILE, "w", encoding="utf-8") as f:
             json.dump(datos, f, ensure_ascii=False, indent=4)
 
-        print(f"Entrada agregada a {EMAIL_MAP_FILE}")
+        print(f"Entrada agregada a {EMAIL_MAP_TEST_FILE}")
     except Exception as e:
-        print(f"Error al actualizar {EMAIL_MAP_FILE}: {e}")
+        print(f"Error al actualizar {EMAIL_MAP_TEST_FILE}: {e}")
 
 
 # --- Ejecución del script ---
