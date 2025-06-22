@@ -372,6 +372,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generador de certificados UTN FRLP")
     parser.add_argument('--test', action='store_true', help="Generar certificado de prueba manual")
     parser.add_argument('--todos', action='store_true', help="Procesar todos los registros desde CSVs")
+    parser.add_argument('--limite', type=int, help="Procesar solo los primeros N registros de cada CSV.")
+
 
     args = parser.parse_args()
 
@@ -379,5 +381,8 @@ if __name__ == "__main__":
         generar_certificado_prueba()
     elif args.todos:
         procesar_csvs_y_generar_certificados(max_registros_test=None)
-    else:
-        print("No se especificó ninguna opción. Usá --help para ver opciones.")
+    elif args.limite is not None:
+        procesar_csvs_y_generar_certificados(max_registros_test=args.limite)
+    else: # Comportamiento por defecto si no se especifican argumentos
+        print("No se especificó ninguna opción de ejecución. Procesando los primeros 2 registros por defecto.")
+        procesar_csvs_y_generar_certificados() # Llama a la función que usa su default de max_registros_test=2
