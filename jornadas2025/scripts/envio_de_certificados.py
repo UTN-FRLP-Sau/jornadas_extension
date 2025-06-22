@@ -9,6 +9,8 @@ from email import encoders
 from jinja2 import Template
 from dotenv import load_dotenv
 import re
+from email.header import Header
+from email.utils import formataddr
 
 # --- Configuración inicial ---
 load_dotenv()
@@ -19,7 +21,7 @@ SMTP_SERVER = 'smtp.office365.com'
 SMTP_PORT = 587
 EMAIL_SENDER = os.getenv('EMAIL_SENDER')
 EMAIL_PASSWORD = os.getenv('EMAIL_PASSWORD')
-EMAIL_ALIAS = os.getenv('EMAIL_ALIAS') or EMAIL_SENDER
+EMAIL_ALIAS = os.getenv('EMAIL_ALIAS')
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 CERTIFICADOS_DIR = os.path.join(BASE_DIR, 'certificados')
@@ -64,8 +66,8 @@ def obtener_registros_log():
 def enviar_certificado(destinatario, nombre, subcarpeta, pdf_path, smtp):
     try:
         msg = MIMEMultipart()
-        msg['Subject'] = "Certificado de participación"
-        msg['From'] = EMAIL_ALIAS
+        msg['Subject'] = "Certificado de asistencia y encuesta - Jornadas de Formación Profesional"
+        msg['From'] = formataddr((str(Header(EMAIL_ALIAS, 'utf-8')), EMAIL_SENDER))
         msg['To'] = destinatario
         msg['Reply-To'] = EMAIL_SENDER
 
@@ -94,7 +96,7 @@ def enviar_certificado(destinatario, nombre, subcarpeta, pdf_path, smtp):
 
 def recorrer_y_enviar():
     if not os.path.exists(MAP_FILE):
-        logging.error(f"No se encontró el archivo de mapeo: {MAP_FILE}")
+        logging.error(f"No se encontro el archivo de mapeo: {MAP_FILE}")
         return
 
     with open(MAP_FILE, encoding='utf-8') as f:
@@ -129,7 +131,7 @@ def recorrer_y_enviar():
                 smtp = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
                 smtp.starttls()
                 smtp.login(EMAIL_SENDER, EMAIL_PASSWORD)
-                logging.info("Conexión SMTP establecida.")
+                logging.info("Conexion SMTP establecida.")
             except Exception as e:
                 logging.error(f"Fallo al conectar al servidor SMTP: {e}")
                 return
