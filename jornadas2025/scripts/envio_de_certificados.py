@@ -49,18 +49,22 @@ def obtener_registros_log():
     exitosos = set()
     fallidos = set()
     if os.path.exists(log_path):
-        with open(log_path, 'r', encoding='utf-8') as f:
-            for linea in f:
-                # Captura destinatario, nombre y subcarpeta en el log
-                match_ok = re.search(r'Correo enviado a (.+?) \((.+?)\) \[subcarpeta: (.+?)\]', linea)
-                match_error = re.search(r'Error al enviar correo a (.+?) \((.+?)\) \[subcarpeta: (.+?)\]', linea)
-                if match_ok:
-                    clave = (match_ok.group(1), match_ok.group(2), match_ok.group(3))
-                    fallidos.discard(clave)
-                    exitosos.add(clave)
-                elif match_error:
-                    clave = (match_error.group(1), match_error.group(2), match_error.group(3))
-                    fallidos.add(clave)
+        try:
+            with open(log_path, 'r', encoding='latin-1') as f:
+                for linea in f:
+                    # Captura destinatario, nombre y subcarpeta en el log
+                    match_ok = re.search(r'Correo enviado a (.+?) \((.+?)\) \[subcarpeta: (.+?)\]', linea)
+                    match_error = re.search(r'Error al enviar correo a (.+?) \((.+?)\) \[subcarpeta: (.+?)\]', linea)
+                    if match_ok:
+                        clave = (match_ok.group(1), match_ok.group(2), match_ok.group(3))
+                        fallidos.discard(clave)
+                        exitosos.add(clave)
+                    elif match_error:
+                        clave = (match_error.group(1), match_error.group(2), match_error.group(3))
+                        fallidos.add(clave)
+        except Exception as e:
+            # Captura si hay un problema al abrir o leer el log por alguna otra razón
+            logging.error(f"Error al leer el archivo de log '{log_path}': {e}")
     return exitosos, fallidos
 
 def enviar_certificado(destinatario, nombre, subcarpeta, pdf_path, smtp):
@@ -99,10 +103,10 @@ def recorrer_y_enviar():
         logging.error(f"No se encontro el archivo de mapeo: {MAP_FILE}")
         return
 
-    with open(MAP_FILE, encoding='utf-8') as f:
+    with open(MAP_FILE, encoding='utf-8') as f: 
         certificados = json.load(f)
 
-    enviados_ok, enviados_fail = obtener_registros_log()
+    envios_ok, envios_fallidos = obtener_registros_log()
 
     smtp = None
     intentos = 0
@@ -122,7 +126,7 @@ def recorrer_y_enviar():
         clave = (email, nombre, subcarpeta)
 
         if not REINTENTAR_TODOS:
-            if clave in enviados_ok:
+            if clave in envios_ok:
                 continue
             # No se saltea si está en fallidos o no está en ninguno (para intentar enviar)
         
